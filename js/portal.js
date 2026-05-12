@@ -76,7 +76,48 @@ function showLoginView() {
 }
 
 async function loadPortalData() {
-  await Promise.all([loadAnnouncement(), loadSystemStatuses()]);
+  await Promise.all([loadAnnouncement(), loadSystemStatuses(), loadBulletins()]);
+}
+
+async function loadBulletins() {
+  try {
+    const snap = await db.collection('portalConfig').doc('bulletinBoard')
+      .collection('items').orderBy('pinned', 'desc').orderBy('createdAt', 'desc').get();
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderBulletins(items);
+  } catch (_) {
+    renderBulletins([]);
+  }
+}
+
+function renderBulletins(items) {
+  const list = document.getElementById('bulletinList');
+  if (!items.length) {
+    list.innerHTML = '<div class="bulletin-empty">目前沒有公告</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const date = item.createdAt?.toDate
+      ? item.createdAt.toDate().toLocaleDateString('zh-TW')
+      : '';
+    const pin = item.pinned
+      ? '<span class="bulletin-pin-badge">📌 置頂</span>'
+      : '';
+    return `
+      <div class="bulletin-item${item.pinned ? ' pinned' : ''}">
+        <div class="bulletin-item-header">
+          <div class="bulletin-title">${escapeHtml(item.title)}</div>
+          ${pin}
+        </div>
+        ${item.content ? `<div class="bulletin-content">${escapeHtml(item.content)}</div>` : ''}
+        ${date ? `<div class="bulletin-date">${date}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 async function loadAnnouncement() {

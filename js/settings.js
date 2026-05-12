@@ -33,7 +33,7 @@ async function handleLogin(user) {
   currentUser = user;
   document.getElementById('navUserEmail').textContent = user.email;
   document.getElementById('appShell').style.display   = 'block';
-  await Promise.all([loadAnnouncementSettings(), loadSystemSettings()]);
+  await Promise.all([loadAnnouncementSettings(), loadSystemSettings(), loadBulletinSettings()]);
 }
 
 // ── Announcement ────────────────────────────────────────────
@@ -198,6 +198,98 @@ async function saveSystemConfig(sysId, card) {
 
   btn.disabled    = false;
   btn.textContent = '儲存設定';
+}
+
+// ── Bulletin Board ───────────────────────────────────────────
+
+let bulletinItems = [];
+
+async function loadBulletinSettings() {
+  try {
+    const snap = await db.collection('portalConfig').doc('bulletinBoard')
+      .collection('items').orderBy('pinned', 'desc').orderBy('createdAt', 'desc').get();
+    bulletinItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (_) {
+    bulletinItems = [];
+  }
+  renderBulletinMgmt();
+  document.getElementById('addBulletinBtn').addEventListener('click', addBulletin);
+}
+
+function renderBulletinMgmt() {
+  const list = document.getElementById('bulletinMgmtList');
+  if (!bulletinItems.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">尚無公告，請從下方新增</div>';
+    return;
+  }
+  list.innerHTML = bulletinItems.map(item => {
+    const date = item.createdAt?.toDate
+      ? item.createdAt.toDate().toLocaleDateString('zh-TW')
+      : '';
+    return `
+      <div class="bulletin-mgmt-item">
+        <div style="flex:1;min-width:0">
+          <div class="b-title">${escapeHtml(item.title)}${item.pinned ? ' 📌' : ''}</div>
+          ${item.content ? `<div class="b-date" style="margin-top:4px">${escapeHtml(item.content.slice(0, 60))}${item.content.length > 60 ? '…' : ''}</div>` : ''}
+          ${date ? `<div class="b-date">${date}</div>` : ''}
+        </div>
+        <div class="b-actions">
+          <button class="btn-icon${item.pinned ? ' active' : ''}" title="${item.pinned ? '取消置頂' : '置頂'}"
+            onclick="togglePin('${item.id}')">📌</button>
+          <button class="btn-icon del" title="刪除"
+            onclick="deleteBulletin('${item.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function addBulletin() {
+  const title   = document.getElementById('newBulletinTitle').value.trim();
+  const content = document.getElementById('newBulletinContent').value.trim();
+  const pinned  = document.getElementById('newBulletinPin').checked;
+  if (!title) { showToast('請輸入標題', 'error'); return; }
+
+  const btn = document.getElementById('addBulletinBtn');
+  btn.disabled = true; btn.textContent = '新增中...';
+  try {
+    await db.collection('portalConfig').doc('bulletinBoard').collection('items').add({
+      title, content, pinned,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    document.getElementById('newBulletinTitle').value   = '';
+    document.getElementById('newBulletinContent').value = '';
+    document.getElementById('newBulletinPin').checked   = false;
+    showToast('✓ 公告已新增', 'success');
+    await loadBulletinSettings();
+  } catch (_) {
+    showToast('新增失敗', 'error');
+  }
+  btn.disabled = false; btn.textContent = '新增公告';
+}
+
+async function togglePin(id) {
+  const item = bulletinItems.find(i => i.id === id);
+  if (!item) return;
+  try {
+    await db.collection('portalConfig').doc('bulletinBoard').collection('items')
+      .doc(id).update({ pinned: !item.pinned });
+    showToast('✓ 已更新', 'success');
+    await loadBulletinSettings();
+  } catch (_) { showToast('操作失敗', 'error'); }
+}
+
+async function deleteBulletin(id) {
+  if (!confirm('確定刪除這則公告？')) return;
+  try {
+    await db.collection('portalConfig').doc('bulletinBoard').collection('items').doc(id).delete();
+    showToast('✓ 已刪除', 'success');
+    await loadBulletinSettings();
+  } catch (_) { showToast('刪除失敗', 'error'); }
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 // ── Toast ────────────────────────────────────────────────────

@@ -59,9 +59,24 @@
 
   <!-- 主內容 -->
   <main class="main-content">
-    <div class="section-title">系統清單</div>
-    <div class="cards-grid" id="cardsGrid">
-      <!-- 由 portal.js 動態渲染 -->
+    <div class="portal-layout">
+
+      <!-- 左：系統卡片 -->
+      <div class="cards-section">
+        <div class="section-title">系統清單</div>
+        <div class="cards-grid" id="cardsGrid">
+          <!-- 由 portal.js 動態渲染 -->
+        </div>
+      </div>
+
+      <!-- 右：布告欄 -->
+      <div class="bulletin-section">
+        <div class="section-title">布告欄</div>
+        <div class="bulletin-list" id="bulletinList">
+          <!-- 由 portal.js 動態渲染 -->
+        </div>
+      </div>
+
     </div>
   </main>
 
