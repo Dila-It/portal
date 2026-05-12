@@ -1,6 +1,6 @@
 // Portal index page logic
 
-const RECAPTCHA_SITE_KEY = '6LdfqdssAAAAAJB_mM_iSs-_igrlRyrqyHGWgJcF';
+const RECAPTCHA_SITE_KEY = '6LeSJeYsAAAAALzQNOREX0fJ7AObrQZsv66j-a1Y';
 
 const SYSTEMS = [
   {
@@ -34,21 +34,26 @@ async function handleLoginSubmit(e) {
   const errEl    = document.getElementById('loginError');
 
   btn.disabled    = true;
-  btn.textContent = '驗證中...';
+  btn.textContent = '登入中...';
   errEl.style.display = 'none';
 
-  try {
-    await grecaptcha.ready(() => {});
-    const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'login' });
-    if (!token) throw { code: 'recaptcha/failed' };
+  const recaptchaToken = grecaptcha.getResponse();
+  if (!recaptchaToken) {
+    errEl.textContent   = '請先完成「我不是機器人」驗證';
+    errEl.style.display = 'block';
+    btn.disabled        = false;
+    btn.textContent     = '登入';
+    return;
+  }
 
-    btn.textContent = '登入中...';
+  try {
     await signIn(email, password);
   } catch (err) {
     errEl.textContent    = translateAuthError(err.code);
     errEl.style.display  = 'block';
     btn.disabled         = false;
     btn.textContent      = '登入';
+    grecaptcha.reset();
   }
 }
 
