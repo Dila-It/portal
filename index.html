@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT-CTS 系統入口</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ── 登入頁 ── -->
+<div id="loginView" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">🏛</div>
+      <h1>IT-CTS 系統入口</h1>
+      <p>請登入以存取各系統</p>
+    </div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginEmail">帳號（Email）</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">密碼</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">登入</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 應用殼層 ── -->
+<div id="appShell" class="app-shell">
+
+  <!-- 頂部導覽 -->
+  <nav class="top-nav">
+    <a href="index.html" class="nav-brand">
+      <div class="brand-icon">🏛</div>
+      IT-CTS 系統入口
+    </a>
+    <div class="nav-right">
+      <span class="nav-user" id="navUserEmail"></span>
+      <a href="settings.html" class="btn btn-secondary" style="padding:6px 14px;font-size:13px">⚙ 系統設定</a>
+      <button class="btn btn-danger" id="logoutBtn" style="padding:6px 14px;font-size:13px">登出</button>
+    </div>
+  </nav>
+
+  <!-- 公告欄 -->
+  <div id="announcementBar" class="announcement-bar hidden">
+    <span class="ann-icon">📢</span>
+    <span id="announcementText"></span>
+  </div>
+
+  <!-- 主內容 -->
+  <main class="main-content">
+    <div class="section-title">系統清單</div>
+    <div class="cards-grid" id="cardsGrid">
+      <!-- 由 portal.js 動態渲染 -->
+    </div>
+  </main>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/portal.js"></script>
+</body>
+</html>
