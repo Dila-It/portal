@@ -544,8 +544,36 @@ body {
 }
 
 /* ── Responsive ── */
-@media (max-width: 600px) {
-  .login-card { padding: 32px 24px; }
-  .main-content { padding: 24px 16px; }
-  .settings-row { flex-wrap: wrap; }
+@media (max-width: 640px) {
+  /* Login */
+  .login-wrap { padding: 16px; align-items: flex-start; padding-top: 40px; }
+  .login-card { padding: 32px 20px; }
+  .login-logo h1 { font-size: 18px; }
+
+  /* Nav */
+  .top-nav { padding: 0 14px; flex-wrap: wrap; height: auto; min-height: 56px; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .nav-right { flex-wrap: wrap; gap: 6px; }
+  .nav-right .btn { padding: 5px 10px; font-size: 12px; }
+  .nav-user { font-size: 11px; width: 100%; }
+
+  /* Announcement */
+  .announcement-bar { padding: 10px 14px; font-size: 12px; }
+
+  /* Cards */
+  .main-content { padding: 20px 14px; }
+  .cards-grid { grid-template-columns: 1fr; gap: 14px; }
+  .app-card { padding: 18px; }
+
+  /* Settings */
+  .settings-wrap { padding: 20px 14px; }
+  .settings-row { flex-wrap: wrap; gap: 8px; }
+  .settings-label { min-width: unset; width: 100%; }
+  .settings-row input[type="text"],
+  .settings-row input[type="number"],
+  .settings-row input[type="email"] { width: 100%; }
+  .settings-card-header { padding: 14px 16px; }
+  .settings-card-body { padding: 14px 16px; }
+
+  /* reCAPTCHA 縮放避免超出 */
+  .g-recaptcha { transform: scale(0.9); transform-origin: left top; }
 }
