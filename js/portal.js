@@ -49,8 +49,8 @@ async function handleLoginSubmit(e) {
   try {
     await signIn(email, password);
   } catch (err) {
-    console.error('Login error:', err.code, err.message);
-    errEl.textContent    = translateAuthError(err.code) + (err.code ? ` (${err.code})` : '');
+    console.error('Login error:', err);
+    errEl.textContent    = err.code || err.message || JSON.stringify(err);
     errEl.style.display  = 'block';
     btn.disabled         = false;
     btn.textContent      = '登入';
