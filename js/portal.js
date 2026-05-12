@@ -1,5 +1,7 @@
 // Portal index page logic
 
+const RECAPTCHA_SITE_KEY = '6LdfqdssAAAAAJB_mM_iSs-_igrlRyrqyHGWgJcF';
+
 const SYSTEMS = [
   {
     id:    'zhihui-todo',
@@ -32,10 +34,15 @@ async function handleLoginSubmit(e) {
   const errEl    = document.getElementById('loginError');
 
   btn.disabled    = true;
-  btn.textContent = '登入中...';
+  btn.textContent = '驗證中...';
   errEl.style.display = 'none';
 
   try {
+    await grecaptcha.ready(() => {});
+    const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'login' });
+    if (!token) throw { code: 'recaptcha/failed' };
+
+    btn.textContent = '登入中...';
     await signIn(email, password);
   } catch (err) {
     errEl.textContent    = translateAuthError(err.code);
@@ -138,6 +145,7 @@ function translateAuthError(code) {
     'auth/invalid-email':     'Email 格式不正確',
     'auth/too-many-requests': '嘗試次數過多，請稍後再試',
     'auth/invalid-credential':'帳號或密碼錯誤',
+    'recaptcha/failed':       '驗證失敗，請重新整理後再試',
   };
   return map[code] || '登入失敗，請再試一次';
 }
