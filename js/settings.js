@@ -7,8 +7,8 @@ const SYSTEM_DEFS = [
     icon:  '✦',
     color: 'linear-gradient(135deg, #4f8ef7, #7c3aed)',
     fields: [
-      { key: 'guestEmail',       label: '訪客帳號',      type: 'email',  hint: '訪客示範用帳號' },
-      { key: 'guestSeedVersion', label: '訪客資料版本',   type: 'number', hint: '更新版本號重置示範資料' },
+      { key: 'guestEmail',       label: '訪客帳號',    type: 'email',  hint: '訪客示範用帳號',          default: 'guest@itcai.com' },
+      { key: 'guestSeedVersion', label: '訪客資料版本', type: 'number', hint: '更新版本號重置示範資料',  default: 3 },
     ],
     flags: [
       { key: 'pwa',           label: 'PWA 離線功能' },
@@ -138,7 +138,7 @@ function buildSystemCard(sys, cfg) {
             <small>${f.hint}</small>
           </div>
           <input type="${f.type}" class="sys-field" data-key="${f.key}"
-            value="${cfg[f.key] !== undefined ? cfg[f.key] : ''}">
+            value="${cfg[f.key] !== undefined ? cfg[f.key] : (f.default !== undefined ? f.default : '')}">
         </div>
       `).join('')}
       ${sys.flags.length ? `
