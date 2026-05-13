@@ -17,6 +17,30 @@
   --radius-sm:   8px;
 }
 
+[data-theme="light"] {
+  --bg:          #F1F5F9;
+  --bg2:         #FFFFFF;
+  --bg3:         #E8EDF5;
+  --border:      #CBD5E1;
+  --accent-glow: rgba(79,142,247,0.12);
+  --text:        #1E293B;
+  --text-muted:  #64748B;
+  --success:     #059669;
+  --warning:     #D97706;
+  --danger:      #DC2626;
+}
+
+/* ── Theme Swatches ── */
+.theme-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  padding: 0;
+}
+.swatch:hover { transform: scale(1.1); }
+.swatch.selected { border-color: var(--text); transform: scale(1.15); }
+
 body {
   background: var(--bg);
   color: var(--text);

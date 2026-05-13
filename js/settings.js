@@ -1,5 +1,13 @@
 // Settings page logic
 
+const THEME_ACCENTS = [
+  { name: 'Indigo', value: '#6366F1' },
+  { name: 'Blue',   value: '#3B82F6' },
+  { name: 'Teal',   value: '#14B8A6' },
+  { name: 'Rose',   value: '#F43F5E' },
+  { name: 'Amber',  value: '#F59E0B' },
+];
+
 const SYSTEM_DEFS = [
   {
     id:    'zhihui-todo',
@@ -33,7 +41,37 @@ async function handleLogin(user) {
   currentUser = user;
   document.getElementById('navUserEmail').textContent = user.email;
   document.getElementById('appShell').style.display   = 'block';
-  await Promise.all([loadAnnouncementSettings(), loadSystemSettings(), loadBulletinSettings()]);
+  await Promise.all([loadPortalThemeSettings(), loadAnnouncementSettings(), loadSystemSettings(), loadBulletinSettings()]);
+}
+
+// ── Portal Theme ─────────────────────────────────────────────
+
+async function loadPortalThemeSettings() {
+  let theme = {};
+  try {
+    const doc = await db.collection('portalConfig').doc('portalTheme').get();
+    if (doc.exists) theme = doc.data();
+  } catch (_) {}
+
+  const wrap = document.getElementById('portalThemeContainer');
+  wrap.innerHTML = buildThemePickerHtml('portal-theme', theme);
+  initSwatches(wrap);
+
+  wrap.querySelector('#savePortalThemeBtn').addEventListener('click', savePortalTheme);
+}
+
+async function savePortalTheme() {
+  const btn    = document.getElementById('savePortalThemeBtn');
+  const wrap   = document.getElementById('portalThemeContainer');
+  const mode   = wrap.querySelector('.theme-mode-select').value;
+  const accent = wrap.querySelector('.swatch.selected')?.dataset.accent || '#4f8ef7';
+  btn.disabled = true; btn.textContent = '儲存中...';
+  try {
+    await db.collection('portalConfig').doc('portalTheme').set({ mode, accent });
+    applyTheme({ mode, accent });
+    showToast('✓ Portal 主題已儲存', 'success');
+  } catch (_) { showToast('儲存失敗', 'error'); }
+  btn.disabled = false; btn.textContent = '儲存主題';
 }
 
 // ── Announcement ────────────────────────────────────────────
@@ -96,6 +134,7 @@ async function loadSystemSettings() {
     } catch (_) {}
 
     const card = buildSystemCard(sys, cfg);
+    initSwatches(card);
     container.appendChild(card);
   }
 }
@@ -155,6 +194,10 @@ function buildSystemCard(sys, cfg) {
           `).join('')}
         </div>
       ` : ''}
+      <div style="margin-top:4px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">UI 主題</div>
+        ${buildThemePickerHtml('sys-theme-' + sys.id, cfg.theme || {})}
+      </div>
       <div class="settings-actions">
         <button class="btn btn-primary save-sys-btn" data-id="${sys.id}">儲存設定</button>
       </div>
@@ -188,6 +231,10 @@ async function saveSystemConfig(sysId, card) {
     featureFlags[el.dataset.key] = el.checked;
   });
   data.featureFlags = featureFlags;
+
+  const mode   = card.querySelector('.theme-mode-select')?.value || 'dark';
+  const accent = card.querySelector('.swatch.selected')?.dataset.accent || '#6366F1';
+  data.theme = { mode, accent };
 
   try {
     await db.collection('portalConfig').doc('systems').collection('items').doc(sysId).set(data);
@@ -301,6 +348,47 @@ function showToast(msg, type = 'success') {
   toast.textContent = msg;
   wrap.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+// ── Theme Helpers ─────────────────────────────────────────────
+
+function buildThemePickerHtml(id, theme = {}) {
+  const currentMode   = theme.mode   || 'dark';
+  const currentAccent = (theme.accent || '#4f8ef7').toLowerCase();
+  const swatchesHtml = THEME_ACCENTS.map(a =>
+    `<button type="button" class="swatch${a.value.toLowerCase() === currentAccent ? ' selected' : ''}"
+      data-accent="${a.value}" style="background:${a.value}" title="${a.name}"></button>`
+  ).join('');
+  return `
+    <div class="settings-row">
+      <div class="settings-label">模式<small>套用至此系統</small></div>
+      <select class="theme-mode-select" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;">
+        <option value="dark"  ${currentMode === 'dark'  ? 'selected' : ''}>🌙 深色</option>
+        <option value="light" ${currentMode === 'light' ? 'selected' : ''}>☀️ 淺色</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">主題色</div>
+      <div class="theme-swatches">${swatchesHtml}</div>
+    </div>
+    ${id === 'portal-theme' ? '<div class="settings-actions"><button class="btn btn-primary" id="savePortalThemeBtn">儲存主題</button></div>' : ''}
+  `;
+}
+
+function initSwatches(container) {
+  container.querySelectorAll('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.theme-swatches').querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+}
+
+function applyTheme(theme) {
+  const mode   = theme?.mode   || 'dark';
+  const accent = theme?.accent || '#4f8ef7';
+  document.documentElement.setAttribute('data-theme', mode);
+  document.documentElement.style.setProperty('--accent', accent);
 }
 
 document.addEventListener('DOMContentLoaded', initSettings);

@@ -82,8 +82,23 @@ async function loadPortalData() {
     loadTodoStats(currentUser.uid),
     loadAnnouncement(),
     loadBulletins(),
+    loadAndApplyPortalTheme(),
   ]);
   renderCards(statuses, { 'zhihui-todo': todoStats });
+}
+
+async function loadAndApplyPortalTheme() {
+  try {
+    const doc = await db.collection('portalConfig').doc('portalTheme').get();
+    if (doc.exists) applyTheme(doc.data());
+  } catch (_) {}
+}
+
+function applyTheme(theme) {
+  const mode   = theme?.mode   || 'dark';
+  const accent = theme?.accent || '#4f8ef7';
+  document.documentElement.setAttribute('data-theme', mode);
+  document.documentElement.style.setProperty('--accent', accent);
 }
 
 async function loadBulletins() {
