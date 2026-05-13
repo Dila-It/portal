@@ -64,7 +64,7 @@ async function savePortalTheme() {
   const btn    = document.getElementById('savePortalThemeBtn');
   const wrap   = document.getElementById('portalThemeContainer');
   const mode   = wrap.querySelector('.theme-mode-select').value;
-  const accent = wrap.querySelector('.swatch.selected')?.dataset.accent || '#4f8ef7';
+  const accent = getSelectedAccent(wrap);
   btn.disabled = true; btn.textContent = '儲存中...';
   try {
     await db.collection('portalConfig').doc('portalTheme').set({ mode, accent });
@@ -233,7 +233,7 @@ async function saveSystemConfig(sysId, card) {
   data.featureFlags = featureFlags;
 
   const mode   = card.querySelector('.theme-mode-select')?.value || 'dark';
-  const accent = card.querySelector('.swatch.selected')?.dataset.accent || '#6366F1';
+  const accent = getSelectedAccent(card);
   data.theme = { mode, accent };
 
   try {
@@ -355,21 +355,34 @@ function showToast(msg, type = 'success') {
 function buildThemePickerHtml(id, theme = {}) {
   const currentMode   = theme.mode   || 'dark';
   const currentAccent = (theme.accent || '#4f8ef7').toLowerCase();
+  const isCustom = !THEME_ACCENTS.some(a => a.value.toLowerCase() === currentAccent);
+
   const swatchesHtml = THEME_ACCENTS.map(a =>
     `<button type="button" class="swatch${a.value.toLowerCase() === currentAccent ? ' selected' : ''}"
       data-accent="${a.value}" style="background:${a.value}" title="${a.name}"></button>`
   ).join('');
+
   return `
     <div class="settings-row">
       <div class="settings-label">模式<small>套用至此系統</small></div>
       <select class="theme-mode-select" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;">
-        <option value="dark"  ${currentMode === 'dark'  ? 'selected' : ''}>🌙 深色</option>
-        <option value="light" ${currentMode === 'light' ? 'selected' : ''}>☀️ 淺色</option>
+        <option value="dark"          ${currentMode === 'dark'          ? 'selected' : ''}>🌙 深色</option>
+        <option value="light"         ${currentMode === 'light'         ? 'selected' : ''}>☀️ 淺色</option>
+        <option value="system"        ${currentMode === 'system'        ? 'selected' : ''}>🖥 跟隨系統</option>
+        <option value="high-contrast" ${currentMode === 'high-contrast' ? 'selected' : ''}>♿ 高對比</option>
       </select>
     </div>
     <div class="settings-row">
       <div class="settings-label">主題色</div>
-      <div class="theme-swatches">${swatchesHtml}</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="theme-swatches">${swatchesHtml}</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer">
+          自訂
+          <input type="color" class="custom-accent-picker"
+            value="${isCustom ? currentAccent : '#6366f1'}"
+            style="width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;padding:0;background:none;">
+        </label>
+      </div>
     </div>
     ${id === 'portal-theme' ? '<div class="settings-actions"><button class="btn btn-primary" id="savePortalThemeBtn">儲存主題</button></div>' : ''}
   `;
@@ -382,6 +395,18 @@ function initSwatches(container) {
       btn.classList.add('selected');
     });
   });
+  container.querySelectorAll('.custom-accent-picker').forEach(picker => {
+    picker.addEventListener('input', () => {
+      picker.closest('.settings-row').querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+    });
+  });
+}
+
+function getSelectedAccent(container) {
+  const selected = container.querySelector('.swatch.selected');
+  if (selected) return selected.dataset.accent;
+  const picker = container.querySelector('.custom-accent-picker');
+  return picker ? picker.value : '#6366F1';
 }
 
 function applyTheme(theme) {
@@ -389,6 +414,11 @@ function applyTheme(theme) {
   const accent = theme?.accent || '#4f8ef7';
   document.documentElement.setAttribute('data-theme', mode);
   document.documentElement.style.setProperty('--accent', accent);
+  const r = parseInt(accent.slice(1, 3), 16);
+  const g = parseInt(accent.slice(3, 5), 16);
+  const b = parseInt(accent.slice(5, 7), 16);
+  const glowOpacity = mode === 'high-contrast' ? 0 : (mode === 'light' ? 0.1 : 0.12);
+  document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${glowOpacity})`);
 }
 
 document.addEventListener('DOMContentLoaded', initSettings);

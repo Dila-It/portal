@@ -30,6 +30,53 @@
   --danger:      #DC2626;
 }
 
+[data-theme="high-contrast"] {
+  --bg:          #000000;
+  --bg2:         #0a0a0a;
+  --bg3:         #141414;
+  --border:      #ffffff;
+  --accent-glow: rgba(0,0,0,0);
+  --text:        #ffffff;
+  --text-muted:  #cccccc;
+  --success:     #00ff88;
+  --warning:     #ffcc00;
+  --danger:      #ff4444;
+}
+
+[data-theme="high-contrast"] .app-card,
+[data-theme="high-contrast"] .settings-card,
+[data-theme="high-contrast"] .bulletin-item,
+[data-theme="high-contrast"] .toast { border-width: 2px; }
+
+[data-theme="high-contrast"] .app-card:hover {
+  box-shadow: none; transform: none; border-color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --bg: #0f1117; --bg2: #161b27; --bg3: #1e2535; --border: #2a3347;
+    --accent-glow: rgba(79,142,247,0.15);
+    --text: #e2e8f0; --text-muted: #7a8aaa;
+    --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    --bg: #F1F5F9; --bg2: #FFFFFF; --bg3: #E8EDF5; --border: #CBD5E1;
+    --accent-glow: rgba(79,142,247,0.12);
+    --text: #1E293B; --text-muted: #64748B;
+    --success: #059669; --warning: #D97706; --danger: #DC2626;
+  }
+}
+
+@media (prefers-contrast: more) {
+  [data-theme="system"] {
+    --bg: #000000; --bg2: #0a0a0a; --bg3: #141414;
+    --border: #ffffff; --text: #ffffff; --text-muted: #cccccc;
+  }
+}
+
 /* ── Theme Swatches ── */
 .theme-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatch {
@@ -48,6 +95,23 @@ body {
   min-height: 100vh;
   line-height: 1.6;
 }
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(ellipse, var(--accent-glow, rgba(79,142,247,0.08)) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.4s ease;
+}
+
+body > * { position: relative; z-index: 1; }
+
+[data-theme="high-contrast"] body::before { display: none; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
