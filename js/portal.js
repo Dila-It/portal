@@ -4,12 +4,13 @@ const RECAPTCHA_SITE_KEY = '6LeSJeYsAAAAALzQNOREX0fJ7AObrQZsv66j-a1Y';
 
 const SYSTEMS = [
   {
-    id:    'zhihui-todo',
-    name:  '智慧待辦',
-    desc:  'Gmail 整合、AI 分析、工作四象限儀表板',
-    icon:  '✦',
-    color: 'linear-gradient(135deg, #4f8ef7, #7c3aed)',
-    url:   'https://dila-it.github.io/todo-app/',
+    id:          'zhihui-todo',
+    name:        '智慧待辦',
+    desc:        'Gmail 整合、AI 分析、工作四象限儀表板',
+    icon:        '✦',
+    color:       'linear-gradient(135deg, #4f8ef7, #7c3aed)',
+    accentColor: '#6366F1',
+    url:         'https://dila-it.github.io/todo-app/',
   },
   // 未來系統在此新增
 ];
@@ -76,7 +77,13 @@ function showLoginView() {
 }
 
 async function loadPortalData() {
-  await Promise.all([loadAnnouncement(), loadSystemStatuses(), loadBulletins()]);
+  const [statuses, todoStats] = await Promise.all([
+    loadSystemStatuses(),
+    loadTodoStats(currentUser.uid),
+    loadAnnouncement(),
+    loadBulletins(),
+  ]);
+  renderCards(statuses, { 'zhihui-todo': todoStats });
 }
 
 async function loadBulletins() {
@@ -140,22 +147,40 @@ async function loadSystemStatuses() {
     const docs = await db.collection('portalConfig').doc('systems').collection('items').get();
     docs.forEach(doc => { statuses[doc.id] = doc.data(); });
   } catch (_) {}
-  renderCards(statuses);
+  return statuses;
 }
 
-function renderCards(statuses) {
+async function loadTodoStats(uid) {
+  try {
+    const snap = await db.collection('users').doc(uid).collection('todos')
+      .where('status', 'in', ['pending', 'in-progress', 'scheduled']).get();
+    const todos = snap.docs.map(d => d.data()).filter(t => !t.isDailyLog);
+    const pending = todos.filter(t => t.status === 'pending').length;
+    const q1 = todos.filter(t => {
+      const urgency    = t.urgency    || 3;
+      const importance = t.importance || urgency;
+      return urgency >= 4 && importance >= 4;
+    }).length;
+    return { total: todos.length, pending, q1 };
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderCards(statuses, allStats = {}) {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '';
 
   SYSTEMS.forEach(sys => {
     const cfg    = statuses[sys.id] || {};
     const status = cfg.status || 'online';
-    const card   = buildCard(sys, status);
+    const stats  = allStats[sys.id] || null;
+    const card   = buildCard(sys, status, stats);
     grid.appendChild(card);
   });
 }
 
-function buildCard(sys, status) {
+function buildCard(sys, status, stats) {
   const statusMap = {
     online:      { label: '線上',  cls: 'status-online' },
     maintenance: { label: '維護中', cls: 'status-maintenance' },
@@ -169,13 +194,34 @@ function buildCard(sys, status) {
   if (status === 'online') a.target = '_blank';
   if (status !== 'online') a.addEventListener('click', e => e.preventDefault());
 
+  if (sys.accentColor) {
+    a.classList.add('has-accent');
+    a.style.setProperty('--card-accent', sys.accentColor);
+  }
+
+  const badge = (stats && stats.total > 0)
+    ? `<span class="card-badge">${stats.total > 99 ? '99+' : stats.total}</span>`
+    : '';
+
+  const statsRow = stats
+    ? `<div class="card-stats">
+        <span class="card-stat-item">待處理 <strong>${stats.pending}</strong></span>
+        <span class="card-stat-sep">·</span>
+        <span class="card-stat-item">Q1急件 <strong>${stats.q1}</strong></span>
+       </div>`
+    : '';
+
   a.innerHTML = `
     <div class="card-header">
       <div class="card-icon" style="background:${sys.color}">${sys.icon}</div>
-      <span class="card-status ${s.cls}">${s.label}</span>
+      <div class="card-header-right">
+        ${badge}
+        <span class="card-status ${s.cls}">${s.label}</span>
+      </div>
     </div>
     <div class="card-name">${sys.name}</div>
     <div class="card-desc">${sys.desc}</div>
+    ${statsRow}
     <div class="card-footer">
       <span>${sys.url.replace('https://', '')}</span>
       <span class="card-link-icon">→</span>

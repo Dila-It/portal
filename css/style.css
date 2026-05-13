@@ -266,8 +266,9 @@ body {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), #7c3aed);
+  height: 4px;
+  background: var(--card-accent, linear-gradient(90deg, var(--accent), #7c3aed));
+  border-radius: var(--radius) var(--radius) 0 0;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -279,12 +280,60 @@ body {
 }
 
 .app-card:hover::before { opacity: 1; }
+.app-card.has-accent::before { opacity: 0.75; }
+.app-card.has-accent:hover::before { opacity: 1; }
 
 .card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.card-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.card-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.card-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 10px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.card-stat-item strong {
+  color: var(--text);
+  font-weight: 600;
+  margin-left: 3px;
+}
+
+.card-stat-sep {
+  color: var(--border);
+  font-size: 14px;
 }
 
 .card-icon {
