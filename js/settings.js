@@ -23,6 +23,14 @@ const SYSTEM_DEFS = [
       { key: 'audioAnalysis', label: '音檔分析功能' },
     ],
   },
+  {
+    id:    'project-mgr',
+    name:  '專案管理',
+    icon:  '📋',
+    color: 'linear-gradient(135deg, #10B981, #059669)',
+    fields: [],
+    flags: [],
+  },
 ];
 
 let currentUser = null;

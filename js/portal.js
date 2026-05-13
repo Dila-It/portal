@@ -12,6 +12,15 @@ const SYSTEMS = [
     accentColor: '#6366F1',
     url:         'https://dila-it.github.io/todo-app/',
   },
+  {
+    id:          'project-mgr',
+    name:        '專案管理',
+    desc:        '里程碑追蹤、任務管理、與智慧待辦整合',
+    icon:        '📋',
+    color:       'linear-gradient(135deg, #10B981, #059669)',
+    accentColor: '#10B981',
+    url:         'https://dila-it.github.io/project-mgr/',
+  },
   // 未來系統在此新增
 ];
 
