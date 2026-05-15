@@ -127,11 +127,25 @@ async function loadBulletins() {
 }
 
 function renderBulletins(items) {
-  const list = document.getElementById('bulletinList');
+  const section = document.getElementById('bulletinSection');
+  const list    = document.getElementById('bulletinList');
+
   if (!items.length) {
-    list.innerHTML = '<div class="bulletin-empty">目前沒有公告</div>';
+    section.classList.add('hidden');
     return;
   }
+  section.classList.remove('hidden');
+
+  if (!section.dataset.toggleInit) {
+    section.dataset.toggleInit = '1';
+    let collapsed = false;
+    document.getElementById('bulletinToggle').addEventListener('click', () => {
+      collapsed = !collapsed;
+      list.classList.toggle('bulletin-collapsed', collapsed);
+      document.getElementById('bulletinChevron').textContent = collapsed ? '▸' : '▾';
+    });
+  }
+
   list.innerHTML = items.map(item => {
     const date = item.createdAt?.toDate
       ? item.createdAt.toDate().toLocaleDateString('zh-TW')

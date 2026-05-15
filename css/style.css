@@ -694,6 +694,14 @@ body > * { position: relative; z-index: 1; }
 
 /* ── Bulletin Board ── */
 .bulletin-section { display: flex; flex-direction: column; gap: 12px; }
+.bulletin-title-row {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+}
+.bulletin-title-row:hover .bulletin-chevron { color: var(--text); }
+.bulletin-chevron { font-size: 13px; color: var(--text-muted); transition: color 0.15s; }
+.bulletin-list { display: flex; flex-direction: column; gap: 10px; overflow: hidden; transition: opacity 0.2s; }
+.bulletin-list.bulletin-collapsed { display: none; }
 
 .bulletin-item {
   background: var(--bg2);

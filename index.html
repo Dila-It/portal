@@ -70,11 +70,12 @@
       </div>
 
       <!-- 右：布告欄 -->
-      <div class="bulletin-section">
-        <div class="section-title">布告欄</div>
-        <div class="bulletin-list" id="bulletinList">
-          <!-- 由 portal.js 動態渲染 -->
+      <div class="bulletin-section hidden" id="bulletinSection">
+        <div class="section-title bulletin-title-row" id="bulletinToggle">
+          <span>布告欄</span>
+          <span class="bulletin-chevron" id="bulletinChevron">▾</span>
         </div>
+        <div class="bulletin-list" id="bulletinList"></div>
       </div>
 
     </div>
