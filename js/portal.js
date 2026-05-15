@@ -21,6 +21,16 @@ const SYSTEMS = [
     accentColor: '#10B981',
     url:         'https://dila-it.github.io/project-mgr/',
   },
+  {
+    id:          'docs',
+    name:        '系統文件',
+    desc:        '功能介紹、使用指南、技術架構說明',
+    icon:        '📖',
+    color:       'linear-gradient(135deg, #6366F1, #4f46e5)',
+    accentColor: '#6366F1',
+    url:         'docs.html',
+    internal:    true,
+  },
   // 未來系統在此新增
 ];
 
@@ -234,7 +244,7 @@ function buildCard(sys, status, stats) {
   const a = document.createElement('a');
   a.className = 'app-card';
   a.href      = status === 'online' ? sys.url : '#';
-  if (status === 'online') a.target = '_blank';
+  if (status === 'online' && !sys.internal) a.target = '_blank';
   if (status !== 'online') a.addEventListener('click', e => e.preventDefault());
 
   if (sys.accentColor) {
