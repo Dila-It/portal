@@ -390,7 +390,8 @@ async function summarizeSelected() {
       }
     );
     const json = await res.json();
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '（無回應）';
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
+      || (json.error ? `API 錯誤：${json.error.message}` : '（無回應）');
 
     const panel = document.getElementById('newsResultPanel');
     document.getElementById('newsResultBody').textContent = text;
