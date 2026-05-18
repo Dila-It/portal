@@ -298,42 +298,64 @@ function translateAuthError(code) {
 
 // ── Weekly News ───────────────────────────────────────────────
 
-let newsArticles = [];
+let newsArticles  = [];
+let savedArticles = [];
 
 async function loadWeeklyNews() {
   try {
-    const doc = await db.collection('portalConfig').doc('weeklyNews').get();
-    if (!doc.exists || !doc.data().articles?.length) {
+    const [newsDoc, savedSnap] = await Promise.all([
+      db.collection('portalConfig').doc('weeklyNews').get(),
+      db.collection('portalConfig').doc('savedNews').collection('items')
+        .orderBy('savedAt', 'desc').get(),
+    ]);
+
+    savedArticles = savedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (!newsDoc.exists || !newsDoc.data().articles?.length) {
       renderNewsEmpty();
     } else {
-      const data = doc.data();
+      const data = newsDoc.data();
       newsArticles = data.articles;
-      renderNewsArticles(newsArticles);
+      renderNewsByCategory(newsArticles);
       if (data.lastUpdated) {
         const d = data.lastUpdated.toDate().toLocaleDateString('zh-TW');
         document.getElementById('newsLastUpdated').textContent = `上次更新：${d}`;
       }
     }
+
+    renderSavedNews();
   } catch (_) {
     renderNewsEmpty();
   }
 
   document.getElementById('newsTriggerBtn').addEventListener('click', triggerNewsFetch);
-  document.getElementById('newsSummarizeBtn').addEventListener('click', summarizeSelected);
 }
 
 function renderNewsEmpty() {
   document.getElementById('newsList').innerHTML =
-    '<div class="news-empty">尚無文章。請至設定頁填入關鍵字後點「立即更新」觸發抓取。</div>';
+    '<div class="news-empty">尚無文章。請至設定頁新增分類與關鍵字後點「立即更新」。</div>';
 }
 
-function renderNewsArticles(articles) {
+function renderNewsByCategory(articles) {
   const list = document.getElementById('newsList');
-  list.innerHTML = articles.map((a, i) => `
-    <div class="news-item">
-      <label class="news-item-check">
-        <input type="checkbox" class="news-cb" data-index="${i}">
-      </label>
+  const groups = {};
+  articles.forEach(a => {
+    const cat = a.category || '其他';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(a);
+  });
+
+  list.innerHTML = Object.entries(groups).map(([cat, items]) => `
+    <div class="news-cat-group">
+      <div class="news-cat-label">${escapeHtml(cat)} <span class="news-cat-count">${items.length}</span></div>
+      ${items.map(a => buildNewsItem(a)).join('')}
+    </div>`).join('');
+}
+
+function buildNewsItem(a) {
+  const isSaved = savedArticles.some(s => s.link === a.link);
+  return `
+    <div class="news-item" data-link="${escapeHtml(a.link)}">
       <div class="news-item-body">
         <div class="news-item-title">
           <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.title)}</a>
@@ -344,64 +366,78 @@ function renderNewsArticles(articles) {
         </div>
         ${a.snippet ? `<div class="news-snippet">${escapeHtml(a.snippet)}</div>` : ''}
       </div>
-    </div>`).join('');
+      <div class="news-item-actions">
+        <button class="news-action-btn ${isSaved ? 'saved' : ''}" title="收藏"
+          onclick="toggleSaveArticle(this, ${JSON.stringify(JSON.stringify(a))})">⭐</button>
+        <button class="news-action-btn hide-btn" title="隱藏"
+          onclick="hideArticle(this, '${escapeHtml(a.link)}')">✕</button>
+      </div>
+    </div>`;
+}
 
-  list.querySelectorAll('.news-cb').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const any = list.querySelectorAll('.news-cb:checked').length > 0;
-      document.getElementById('newsSummarizeBtn').disabled = !any;
+function renderSavedNews() {
+  const section = document.getElementById('savedNewsSection');
+  const list    = document.getElementById('savedNewsList');
+  if (!savedArticles.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  list.innerHTML = savedArticles.map(a => `
+    <div class="news-item" data-link="${escapeHtml(a.link)}">
+      <div class="news-item-body">
+        <div class="news-item-title">
+          <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.title)}</a>
+        </div>
+        <div class="news-item-meta">
+          <span class="news-source">${escapeHtml(a.source)}</span>
+          ${a.category ? `<span class="news-cat-badge">${escapeHtml(a.category)}</span>` : ''}
+          ${a.pubDate ? `<span class="news-date">${formatNewsDate(a.pubDate)}</span>` : ''}
+        </div>
+        ${a.snippet ? `<div class="news-snippet">${escapeHtml(a.snippet)}</div>` : ''}
+      </div>
+      <div class="news-item-actions">
+        <button class="news-action-btn saved" title="取消收藏"
+          onclick="unsaveArticle(this, '${a.id}', '${escapeHtml(a.link)}')">⭐</button>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleSaveArticle(btn, articleJson) {
+  const a = JSON.parse(articleJson);
+  const alreadySaved = savedArticles.some(s => s.link === a.link);
+  if (alreadySaved) return;
+  try {
+    const ref = await db.collection('portalConfig').doc('savedNews').collection('items').add({
+      ...a, savedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-  });
+    savedArticles.unshift({ id: ref.id, ...a });
+    btn.classList.add('saved');
+    renderSavedNews();
+  } catch (_) {}
+}
+
+async function unsaveArticle(btn, id, link) {
+  try {
+    await db.collection('portalConfig').doc('savedNews').collection('items').doc(id).delete();
+    savedArticles = savedArticles.filter(s => s.id !== id);
+    const mainBtn = document.querySelector(`.news-item[data-link="${link}"] .news-action-btn:not(.hide-btn)`);
+    if (mainBtn) mainBtn.classList.remove('saved');
+    renderSavedNews();
+  } catch (_) {}
+}
+
+async function hideArticle(btn, link) {
+  const item = btn.closest('.news-item');
+  try {
+    await db.collection('portalConfig').doc('newsSettings').update({
+      hiddenLinks: firebase.firestore.FieldValue.arrayUnion(link),
+    });
+    item.style.opacity = '0';
+    item.style.transition = 'opacity 0.2s';
+    setTimeout(() => item.remove(), 200);
+  } catch (_) {}
 }
 
 function formatNewsDate(pubDate) {
   try { return new Date(pubDate).toLocaleDateString('zh-TW'); } catch (_) { return ''; }
-}
-
-async function summarizeSelected() {
-  const checked = [...document.querySelectorAll('.news-cb:checked')];
-  if (!checked.length) return;
-
-  let geminiKey = '';
-  try {
-    const doc = await db.collection('portalConfig').doc('newsSettings').get();
-    geminiKey = doc.exists ? (doc.data().geminiKey || '') : '';
-  } catch (_) {}
-  if (!geminiKey) { alert('請先至設定頁填入 Gemini API Key'); return; }
-
-  const selected = checked.map(cb => newsArticles[parseInt(cb.dataset.index)]);
-
-  const btn = document.getElementById('newsSummarizeBtn');
-  btn.disabled = true; btn.textContent = '摘要中...';
-
-  const articlesText = selected.map((a, i) =>
-    `${i + 1}. 標題：${a.title}\n來源：${a.source}\n摘要：${a.snippet || '（無）'}`
-  ).join('\n\n');
-
-  const prompt = `請用繁體中文為以下 ${selected.length} 篇文章各提供 60-100 字的重點摘要。\n格式：\n1. 【文章標題】\n摘要：...\n\n2. ...\n\n---\n${articlesText}`;
-
-  try {
-    const res  = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      }
-    );
-    const json = await res.json();
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
-      || (json.error ? `API 錯誤：${json.error.message}` : '（無回應）');
-
-    const panel = document.getElementById('newsResultPanel');
-    document.getElementById('newsResultBody').textContent = text;
-    panel.classList.remove('hidden');
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (e) {
-    alert('Gemini API 呼叫失敗：' + e.message);
-  }
-
-  btn.disabled = false; btn.textContent = 'Gemini 摘要';
 }
 
 async function triggerNewsFetch() {

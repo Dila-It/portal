@@ -431,7 +431,7 @@ function applyTheme(theme) {
 
 // ── News Settings ─────────────────────────────────────────────
 
-let newsKeywords = [];
+let newsCategories = []; // [{ name, keywords: [] }]
 
 async function loadNewsSettings() {
   let settings = {};
@@ -440,43 +440,81 @@ async function loadNewsSettings() {
     if (doc.exists) settings = doc.data();
   } catch (_) {}
 
-  newsKeywords = settings.keywords || [];
-  document.getElementById('newsGeminiKey').value    = settings.geminiKey    || '';
-  document.getElementById('newsGithubToken').value  = settings.githubToken  || '';
-  document.getElementById('newsGithubRepo').value   = settings.githubRepo   || '';
+  newsCategories = settings.categories || [];
+  document.getElementById('newsGithubToken').value = settings.githubToken || '';
+  document.getElementById('newsGithubRepo').value  = settings.githubRepo  || '';
 
-  renderNewsKeywords();
+  renderNewsCategories();
 
-  document.getElementById('newsKeywordInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); addNewsKeyword(); }
+  document.getElementById('newsCatNameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addNewsCategory(); }
   });
-  document.getElementById('newsAddKeywordBtn').addEventListener('click', addNewsKeyword);
+  document.getElementById('newsAddCatBtn').addEventListener('click', addNewsCategory);
   document.getElementById('saveNewsSettingsBtn').addEventListener('click', saveNewsSettings);
 }
 
-function renderNewsKeywords() {
-  const wrap = document.getElementById('newsKeywordTags');
-  if (!newsKeywords.length) {
-    wrap.innerHTML = '<span style="color:var(--text-muted);font-size:12px">尚無關鍵字</span>';
+function renderNewsCategories() {
+  const list = document.getElementById('newsCategoriesList');
+  if (!newsCategories.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;margin-bottom:8px">尚無類別，請從下方新增</div>';
     return;
   }
-  wrap.innerHTML = newsKeywords.map((kw, i) =>
-    `<span class="kw-tag">${escapeHtml(kw)}<button class="kw-del" onclick="removeNewsKeyword(${i})">×</button></span>`
-  ).join('');
+  list.innerHTML = newsCategories.map((cat, ci) => `
+    <div class="news-cat-row">
+      <div class="news-cat-header">
+        <span class="news-cat-name">${escapeHtml(cat.name)}</span>
+        <button class="kw-del" style="font-size:16px" onclick="removeNewsCategory(${ci})">×</button>
+      </div>
+      <div class="kw-tags-wrap" id="catKwTags_${ci}"></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="text" class="cat-kw-input" data-ci="${ci}" placeholder="新增關鍵字"
+          style="flex:1;font-size:12px" readonly onfocus="this.removeAttribute('readonly')"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addCatKeyword(${ci})}">
+        <button class="btn btn-secondary" onclick="addCatKeyword(${ci})"
+          style="padding:4px 10px;font-size:12px;white-space:nowrap">新增</button>
+      </div>
+    </div>`).join('');
+
+  newsCategories.forEach((cat, ci) => renderCatKeywords(ci));
 }
 
-function addNewsKeyword() {
-  const input = document.getElementById('newsKeywordInput');
-  const kw    = input.value.trim();
-  if (!kw || newsKeywords.includes(kw)) { input.value = ''; return; }
-  newsKeywords.push(kw);
+function renderCatKeywords(ci) {
+  const wrap = document.getElementById(`catKwTags_${ci}`);
+  if (!wrap) return;
+  const keywords = newsCategories[ci].keywords || [];
+  wrap.innerHTML = keywords.length
+    ? keywords.map((kw, ki) =>
+        `<span class="kw-tag">${escapeHtml(kw)}<button class="kw-del" onclick="removeCatKeyword(${ci},${ki})">×</button></span>`
+      ).join('')
+    : '<span style="color:var(--text-muted);font-size:11px">尚無關鍵字</span>';
+}
+
+function addNewsCategory() {
+  const input = document.getElementById('newsCatNameInput');
+  const name  = input.value.trim();
+  if (!name || newsCategories.some(c => c.name === name)) { input.value = ''; return; }
+  newsCategories.push({ name, keywords: [] });
   input.value = '';
-  renderNewsKeywords();
+  renderNewsCategories();
 }
 
-function removeNewsKeyword(i) {
-  newsKeywords.splice(i, 1);
-  renderNewsKeywords();
+function removeNewsCategory(ci) {
+  newsCategories.splice(ci, 1);
+  renderNewsCategories();
+}
+
+function addCatKeyword(ci) {
+  const input = document.querySelector(`.cat-kw-input[data-ci="${ci}"]`);
+  const kw    = input.value.trim();
+  if (!kw || newsCategories[ci].keywords.includes(kw)) { input.value = ''; return; }
+  newsCategories[ci].keywords.push(kw);
+  input.value = '';
+  renderCatKeywords(ci);
+}
+
+function removeCatKeyword(ci, ki) {
+  newsCategories[ci].keywords.splice(ki, 1);
+  renderCatKeywords(ci);
 }
 
 async function saveNewsSettings() {
@@ -484,11 +522,10 @@ async function saveNewsSettings() {
   btn.disabled = true; btn.textContent = '儲存中...';
   try {
     await db.collection('portalConfig').doc('newsSettings').set({
-      keywords:    newsKeywords,
-      geminiKey:   document.getElementById('newsGeminiKey').value.trim(),
+      categories:  newsCategories,
       githubToken: document.getElementById('newsGithubToken').value.trim(),
       githubRepo:  document.getElementById('newsGithubRepo').value.trim(),
-    });
+    }, { merge: true });
     showToast('✓ 本週新知設定已儲存', 'success');
   } catch (_) {
     showToast('儲存失敗', 'error');
