@@ -46,7 +46,7 @@ async function main() {
     })
   );
 
-  // 自動分類（第一個符合的類別優先，無符合歸入「其他」）
+  // 自動分類（第一個符合的類別優先，無符合回傳 null）
   function classifyArticle(article) {
     const text = (article.title + ' ' + article.snippet).toLowerCase();
     for (const cat of categories) {
@@ -55,10 +55,12 @@ async function main() {
         return cat.name;
       }
     }
-    return '其他';
+    return null;
   }
 
-  // 去重、過濾已隱藏、分類、按日期排序、取前 40 篇
+  const hasCategories = categories.length > 0;
+
+  // 去重、過濾已隱藏、分類、無類別時捨棄（有設類別的情況）、按日期排序、取前 40 篇
   const seen = new Set();
   const articles = allArticles
     .filter(a => {
@@ -67,6 +69,7 @@ async function main() {
       return true;
     })
     .map(a => ({ ...a, category: classifyArticle(a) }))
+    .filter(a => !hasCategories || a.category !== null)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
     .slice(0, 40);
 
