@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 
 const RSS_SOURCES = [
   { name: 'iThome',          url: 'https://www.ithome.com.tw/rss' },
+  { name: '電腦玩物',         url: 'https://feeds.feedburner.com/playpcesor' },
   { name: 'TechCrunch',      url: 'https://techcrunch.com/feed/' },
   { name: 'Hacker News',     url: 'https://hnrss.org/frontpage' },
   { name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/' },
@@ -44,24 +45,24 @@ async function main() {
     })
   );
 
-  // 關鍵字過濾（留空則全部保留）
-  const filtered = keywords.length === 0
-    ? allArticles
-    : allArticles.filter(a => {
-        const text = (a.title + ' ' + a.snippet).toLowerCase();
-        return keywords.some(kw => text.includes(kw.toLowerCase()));
-      });
+  // 關鍵字相關性評分（有關鍵字符合的排前面，全部保留）
+  const scored = allArticles.map(a => {
+    const text = (a.title + ' ' + a.snippet).toLowerCase();
+    const matchCount = keywords.filter(kw => text.includes(kw.toLowerCase())).length;
+    return { ...a, _score: matchCount };
+  });
 
-  // 去重（by link）、按日期排序、取前 30 篇
+  // 去重（by link）、相關優先 → 日期次之、取前 30 篇
   const seen = new Set();
-  const articles = filtered
+  const articles = scored
     .filter(a => {
       if (!a.link || seen.has(a.link)) return false;
       seen.add(a.link);
       return true;
     })
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-    .slice(0, 30);
+    .sort((a, b) => b._score - a._score || new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 30)
+    .map(({ _score, ...a }) => a);
 
   await db.collection('portalConfig').doc('weeklyNews').set({
     articles,
