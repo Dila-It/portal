@@ -49,7 +49,7 @@ async function handleLogin(user) {
   currentUser = user;
   document.getElementById('navUserEmail').textContent = user.email;
   document.getElementById('appShell').style.display   = 'block';
-  await Promise.all([loadPortalThemeSettings(), loadAnnouncementSettings(), loadSystemSettings(), loadBulletinSettings()]);
+  await Promise.all([loadPortalThemeSettings(), loadAnnouncementSettings(), loadSystemSettings(), loadBulletinSettings(), loadNewsSettings()]);
 }
 
 // ── Portal Theme ─────────────────────────────────────────────
@@ -427,6 +427,73 @@ function applyTheme(theme) {
   const b = parseInt(accent.slice(5, 7), 16);
   const glowOpacity = mode === 'high-contrast' ? 0 : (mode === 'light' ? 0.1 : 0.12);
   document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${glowOpacity})`);
+}
+
+// ── News Settings ─────────────────────────────────────────────
+
+let newsKeywords = [];
+
+async function loadNewsSettings() {
+  let settings = {};
+  try {
+    const doc = await db.collection('portalConfig').doc('newsSettings').get();
+    if (doc.exists) settings = doc.data();
+  } catch (_) {}
+
+  newsKeywords = settings.keywords || [];
+  document.getElementById('newsGeminiKey').value    = settings.geminiKey    || '';
+  document.getElementById('newsGithubToken').value  = settings.githubToken  || '';
+  document.getElementById('newsGithubRepo').value   = settings.githubRepo   || '';
+
+  renderNewsKeywords();
+
+  document.getElementById('newsKeywordInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addNewsKeyword(); }
+  });
+  document.getElementById('newsAddKeywordBtn').addEventListener('click', addNewsKeyword);
+  document.getElementById('saveNewsSettingsBtn').addEventListener('click', saveNewsSettings);
+}
+
+function renderNewsKeywords() {
+  const wrap = document.getElementById('newsKeywordTags');
+  if (!newsKeywords.length) {
+    wrap.innerHTML = '<span style="color:var(--text-muted);font-size:12px">尚無關鍵字</span>';
+    return;
+  }
+  wrap.innerHTML = newsKeywords.map((kw, i) =>
+    `<span class="kw-tag">${escapeHtml(kw)}<button class="kw-del" onclick="removeNewsKeyword(${i})">×</button></span>`
+  ).join('');
+}
+
+function addNewsKeyword() {
+  const input = document.getElementById('newsKeywordInput');
+  const kw    = input.value.trim();
+  if (!kw || newsKeywords.includes(kw)) { input.value = ''; return; }
+  newsKeywords.push(kw);
+  input.value = '';
+  renderNewsKeywords();
+}
+
+function removeNewsKeyword(i) {
+  newsKeywords.splice(i, 1);
+  renderNewsKeywords();
+}
+
+async function saveNewsSettings() {
+  const btn = document.getElementById('saveNewsSettingsBtn');
+  btn.disabled = true; btn.textContent = '儲存中...';
+  try {
+    await db.collection('portalConfig').doc('newsSettings').set({
+      keywords:    newsKeywords,
+      geminiKey:   document.getElementById('newsGeminiKey').value.trim(),
+      githubToken: document.getElementById('newsGithubToken').value.trim(),
+      githubRepo:  document.getElementById('newsGithubRepo').value.trim(),
+    });
+    showToast('✓ 本週新知設定已儲存', 'success');
+  } catch (_) {
+    showToast('儲存失敗', 'error');
+  }
+  btn.disabled = false; btn.textContent = '儲存設定';
 }
 
 document.addEventListener('DOMContentLoaded', initSettings);

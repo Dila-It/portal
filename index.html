@@ -79,6 +79,26 @@
       </div>
 
     </div>
+
+    <!-- 本週新知 -->
+    <section class="news-section" id="newsSection">
+      <div class="news-header">
+        <div class="section-title" style="margin:0">本週新知</div>
+        <div class="news-header-actions">
+          <span class="news-last-updated" id="newsLastUpdated"></span>
+          <button class="btn btn-secondary" id="newsTriggerBtn" style="padding:6px 14px;font-size:13px">↻ 立即更新</button>
+          <button class="btn btn-primary"   id="newsSummarizeBtn" style="padding:6px 14px;font-size:13px" disabled>Gemini 摘要</button>
+        </div>
+      </div>
+      <div class="news-list" id="newsList">
+        <div class="news-loading">載入中...</div>
+      </div>
+      <div class="news-result-panel hidden" id="newsResultPanel">
+        <div class="news-result-title">Gemini 摘要結果</div>
+        <div class="news-result-body" id="newsResultBody"></div>
+      </div>
+    </section>
+
   </main>
 
 </div>

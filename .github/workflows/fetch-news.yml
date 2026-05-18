@@ -1,0 +1,26 @@
+name: Fetch Weekly News
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'  # 每週一 01:00 UTC（台北時間 09:00）
+  workflow_dispatch:      # 允許手動觸發
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: scripts
+
+      - name: Fetch and filter news
+        run: node fetch-news.js
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

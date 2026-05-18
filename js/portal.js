@@ -102,6 +102,7 @@ async function loadPortalData() {
     loadAnnouncement(),
     loadBulletins(),
     loadAndApplyPortalTheme(),
+    loadWeeklyNews(),
   ]);
   renderCards(statuses, { 'zhihui-todo': todoStats });
 }
@@ -293,6 +294,150 @@ function translateAuthError(code) {
     'recaptcha/failed':       '驗證失敗，請重新整理後再試',
   };
   return map[code] || '登入失敗，請再試一次';
+}
+
+// ── Weekly News ───────────────────────────────────────────────
+
+let newsArticles = [];
+
+async function loadWeeklyNews() {
+  try {
+    const doc = await db.collection('portalConfig').doc('weeklyNews').get();
+    if (!doc.exists || !doc.data().articles?.length) {
+      renderNewsEmpty();
+    } else {
+      const data = doc.data();
+      newsArticles = data.articles;
+      renderNewsArticles(newsArticles);
+      if (data.lastUpdated) {
+        const d = data.lastUpdated.toDate().toLocaleDateString('zh-TW');
+        document.getElementById('newsLastUpdated').textContent = `上次更新：${d}`;
+      }
+    }
+  } catch (_) {
+    renderNewsEmpty();
+  }
+
+  document.getElementById('newsTriggerBtn').addEventListener('click', triggerNewsFetch);
+  document.getElementById('newsSummarizeBtn').addEventListener('click', summarizeSelected);
+}
+
+function renderNewsEmpty() {
+  document.getElementById('newsList').innerHTML =
+    '<div class="news-empty">尚無文章。請至設定頁填入關鍵字後點「立即更新」觸發抓取。</div>';
+}
+
+function renderNewsArticles(articles) {
+  const list = document.getElementById('newsList');
+  list.innerHTML = articles.map((a, i) => `
+    <div class="news-item">
+      <label class="news-item-check">
+        <input type="checkbox" class="news-cb" data-index="${i}">
+      </label>
+      <div class="news-item-body">
+        <div class="news-item-title">
+          <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.title)}</a>
+        </div>
+        <div class="news-item-meta">
+          <span class="news-source">${escapeHtml(a.source)}</span>
+          ${a.pubDate ? `<span class="news-date">${formatNewsDate(a.pubDate)}</span>` : ''}
+        </div>
+        ${a.snippet ? `<div class="news-snippet">${escapeHtml(a.snippet)}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  list.querySelectorAll('.news-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const any = list.querySelectorAll('.news-cb:checked').length > 0;
+      document.getElementById('newsSummarizeBtn').disabled = !any;
+    });
+  });
+}
+
+function formatNewsDate(pubDate) {
+  try { return new Date(pubDate).toLocaleDateString('zh-TW'); } catch (_) { return ''; }
+}
+
+async function summarizeSelected() {
+  const checked = [...document.querySelectorAll('.news-cb:checked')];
+  if (!checked.length) return;
+
+  let geminiKey = '';
+  try {
+    const doc = await db.collection('portalConfig').doc('newsSettings').get();
+    geminiKey = doc.exists ? (doc.data().geminiKey || '') : '';
+  } catch (_) {}
+  if (!geminiKey) { alert('請先至設定頁填入 Gemini API Key'); return; }
+
+  const selected = checked.map(cb => newsArticles[parseInt(cb.dataset.index)]);
+
+  const btn = document.getElementById('newsSummarizeBtn');
+  btn.disabled = true; btn.textContent = '摘要中...';
+
+  const articlesText = selected.map((a, i) =>
+    `${i + 1}. 標題：${a.title}\n來源：${a.source}\n摘要：${a.snippet || '（無）'}`
+  ).join('\n\n');
+
+  const prompt = `請用繁體中文為以下 ${selected.length} 篇文章各提供 60-100 字的重點摘要。\n格式：\n1. 【文章標題】\n摘要：...\n\n2. ...\n\n---\n${articlesText}`;
+
+  try {
+    const res  = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      }
+    );
+    const json = await res.json();
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '（無回應）';
+
+    const panel = document.getElementById('newsResultPanel');
+    document.getElementById('newsResultBody').textContent = text;
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    alert('Gemini API 呼叫失敗：' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = 'Gemini 摘要';
+}
+
+async function triggerNewsFetch() {
+  let githubToken = '', githubRepo = '';
+  try {
+    const doc = await db.collection('portalConfig').doc('newsSettings').get();
+    if (doc.exists) { githubToken = doc.data().githubToken || ''; githubRepo = doc.data().githubRepo || ''; }
+  } catch (_) {}
+  if (!githubToken || !githubRepo) { alert('請先至設定頁填入 GitHub Token 和 Repo'); return; }
+
+  const btn = document.getElementById('newsTriggerBtn');
+  btn.disabled = true; btn.textContent = '觸發中...';
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${githubRepo}/actions/workflows/fetch-news.yml/dispatches`,
+      {
+        method:  'POST',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept':        'application/vnd.github+json',
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({ ref: 'main' }),
+      }
+    );
+    if (res.status === 204) {
+      alert('✓ 已觸發更新，約 1-2 分鐘後重新整理頁面查看結果');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert('觸發失敗：' + (err.message || `HTTP ${res.status}`));
+    }
+  } catch (e) {
+    alert('網路錯誤：' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '↻ 立即更新';
 }
 
 document.addEventListener('DOMContentLoaded', initPortal);

@@ -114,6 +114,57 @@
     <div class="section-title" style="margin-top:32px">各系統參數</div>
     <div id="systemsContainer"></div>
 
+    <!-- 本週新知設定 -->
+    <div class="section-title" style="margin-top:32px">本週新知</div>
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <div class="s-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">📰</div>
+        <div>
+          <h3>本週新知設定</h3>
+          <p>RSS 關鍵字過濾、Gemini 摘要、GitHub Actions 手動觸發</p>
+        </div>
+      </div>
+      <div class="settings-card-body">
+        <div class="settings-row" style="align-items:flex-start">
+          <div class="settings-label">
+            關鍵字
+            <small>過濾 RSS 文章用，留空則顯示全部</small>
+          </div>
+          <div style="flex:1">
+            <div class="kw-tags-wrap" id="newsKeywordTags"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input type="text" id="newsKeywordInput" placeholder="輸入關鍵字後按 Enter 或點新增" style="flex:1">
+              <button class="btn btn-secondary" id="newsAddKeywordBtn" style="padding:6px 14px;font-size:13px;white-space:nowrap">新增</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            Gemini API Key
+            <small>前端呼叫摘要使用</small>
+          </div>
+          <input type="password" id="newsGeminiKey" placeholder="AIza...">
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            GitHub Token
+            <small>需有 workflow 寫入權限（用於立即更新）</small>
+          </div>
+          <input type="password" id="newsGithubToken" placeholder="ghp_...">
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">
+            GitHub Repo
+            <small>格式：owner/repo</small>
+          </div>
+          <input type="text" id="newsGithubRepo" placeholder="dila-it/portal">
+        </div>
+        <div class="settings-actions">
+          <button class="btn btn-primary" id="saveNewsSettingsBtn">儲存設定</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
